@@ -33,7 +33,7 @@ class ActionResponse(BaseModel):
     id: int
     name: str
     description: str
-    fleet_id: int
+    fleet_id: int | None
     fc_character_id: int
     fc_character_name: str
     status: str

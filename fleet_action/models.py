@@ -21,7 +21,7 @@ class FleetAction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    fleet_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    fleet_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     fc_character_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     fc_character_name: Mapped[str] = mapped_column(String(256), nullable=False)
     status: Mapped[str] = mapped_column(

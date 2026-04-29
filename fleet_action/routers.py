@@ -22,9 +22,6 @@ from fleet_action.schemas import (
 
 router = APIRouter()
 
-# FC 命令角色集合
-_COMMAND_ROLES = {"fleet_commander", "wing_commander", "squad_commander"}
-
 # MOTD 通知模板
 _MOTD_TEMPLATE = (
     "[PAP 行动通知] 行动「{action_name}」(ID:{action_id}) "
@@ -63,6 +60,24 @@ async def _verify_character_ownership(
             detail="该角色不属于您的账号，无法代为操作"
         )
     return char
+
+
+# ── GET /characters ──────────────────────────────────────────────────────────
+
+@router.get("/characters", summary="当前用户的 EVE 角色列表（供表单动态选项使用）")
+async def list_user_characters(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """返回当前登录用户绑定的所有角色，格式：[{"label": name, "value": character_id}]"""
+    result = await db.execute(
+        select(Character).where(Character.user_id == current_user.id)
+    )
+    characters = result.scalars().all()
+    return [
+        {"label": c.character_name, "value": c.character_id}
+        for c in characters
+    ]
 
 
 # ── GET /fleet/info ───────────────────────────────────────────────────────────
@@ -140,28 +155,15 @@ async def create_action(
     current_user: User = Depends(require_permission("fleet-action.manage")),
 ):
     """
-    创建行动。通过 ESI 自动检测 fc_character_id 当前所在舰队的 fleet_id。
-    fc_character_id 必须属于当前登录用户，且具有舰队指挥官角色。
+    创建行动，仅在 Helm 内流转数据，不请求 ESI。
+    fc_character_id 必须属于当前登录用户。
     """
     char = await _verify_character_ownership(body.fc_character_id, current_user, db)
-    token, refresh_tok = await fleet_esi.get_valid_token(body.fc_character_id, db)
-
-    fleet_data = await fleet_esi.get_character_fleet(body.fc_character_id, token, refresh_tok)
-    fleet_id = fleet_data.get("fleet_id")
-    if not fleet_id:
-        raise HTTPException(status_code=400, detail="该角色当前不在任何舰队中")
-
-    role = fleet_data.get("role", "")
-    if role not in _COMMAND_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail=f"角色当前身份为「{role}」，只有 FC/WC/SC 才能创建行动"
-        )
 
     action = FleetAction(
         name=body.name,
         description=body.description,
-        fleet_id=fleet_id,
+        fleet_id=None,
         fc_character_id=body.fc_character_id,
         fc_character_name=char.character_name,
         status=ActionStatus.active,
@@ -274,9 +276,16 @@ async def get_fleet_members(
         raise HTTPException(status_code=400, detail="行动已结束，无法查询实时舰队成员")
 
     token, refresh_tok = await fleet_esi.get_valid_token(action.fc_character_id, db)
-    members = await fleet_esi.get_fleet_members(
-        action.fleet_id, token, refresh_tok, action.fc_character_id
-    )
+
+    fleet_data = await fleet_esi.get_character_fleet(action.fc_character_id, token, refresh_tok)
+    fleet_id = fleet_data.get("fleet_id")
+    if not fleet_id:
+        raise HTTPException(
+            status_code=400,
+            detail="FC 当前不在任何舰队中，请先由 FC 创建一个舰队后再尝试"
+        )
+
+    members = await fleet_esi.get_fleet_members(fleet_id, token, refresh_tok, action.fc_character_id)
     return members
 
 
@@ -305,8 +314,16 @@ async def issue_pap(
     await _verify_character_ownership(body.fc_character_id, current_user, db)
     token, refresh_tok = await fleet_esi.get_valid_token(body.fc_character_id, db)
 
+    fleet_id = action.fleet_id
+    if fleet_id is None:
+        fleet_data = await fleet_esi.get_character_fleet(body.fc_character_id, token, refresh_tok)
+        fleet_id = fleet_data.get("fleet_id")
+        if not fleet_id:
+            raise HTTPException(status_code=400, detail="该行动未关联舰队，且 FC 当前不在任何舰队中，无法发放 PAP")
+        action.fleet_id = fleet_id
+
     members = await fleet_esi.get_fleet_members(
-        action.fleet_id, token, refresh_tok, body.fc_character_id
+        fleet_id, token, refresh_tok, body.fc_character_id
     )
 
     existing_result = await db.execute(
@@ -342,7 +359,7 @@ async def issue_pap(
             total_pap_count=total_pap,
         )
         try:
-            await fleet_esi.put_fleet_motd(action.fleet_id, token, motd)
+            await fleet_esi.put_fleet_motd(fleet_id, token, motd)
             motd_updated = True
         except Exception:
             # MOTD 更新失败不影响 PAP 记录入库

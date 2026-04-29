@@ -2,6 +2,7 @@
 setlocal
 
 set "ROOT=%~dp0"
+set "FRONTEND=%ROOT%fleet_action\frontend"
 set "DIST=%ROOT%dist"
 
 echo ===================================================
@@ -9,7 +10,21 @@ echo  helm-plugin-fleet-action build script
 echo ===================================================
 
 echo.
-echo [1/2] Building Python wheel...
+echo [1/3] Building Vue frontend...
+cd /d "%FRONTEND%"
+
+if not exist "node_modules" (
+    echo      node_modules not found, running npm install...
+    call npm install
+    if errorlevel 1 ( echo [ERROR] npm install failed & exit /b 1 )
+)
+
+call npm run build
+if errorlevel 1 ( echo [ERROR] Vue build failed & exit /b 1 )
+echo      OK - frontend dist ready
+
+echo.
+echo [2/3] Building Python wheel...
 cd /d "%ROOT%"
 
 python -m build --wheel --outdir "%DIST%" 2>nul
@@ -23,7 +38,7 @@ if errorlevel 1 (
 echo      OK - wheel saved to dist\
 
 echo.
-echo [2/2] Done!
+echo [3/3] Done!
 echo.
 for %%f in ("%DIST%\*.whl") do echo   %%f
 echo.

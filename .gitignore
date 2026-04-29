@@ -10,7 +10,7 @@ __pycache__/
 fleet_action/frontend/dist/
 
 # 前端依赖
-frontend/node_modules/
+fleet_action/frontend/node_modules/
 
 # 环境
 .env
@@ -23,6 +23,6 @@ frontend/node_modules/
 *.swp
 
 # docs
-Plugin_Dev_Guide.md
 .claude/
 esi-docs-main/
+Plugin_Dev_Guide/
