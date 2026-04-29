@@ -11,6 +11,7 @@ from app.models.user import User
 
 from fleet_action import esi as fleet_esi
 from fleet_action.models import ActionStatus, FleetAction, PapRecord
+from app.services.esi_names import resolve_entity_names
 from fleet_action.schemas import (
     ActionDetailResponse,
     ActionResponse,
@@ -286,6 +287,22 @@ async def get_fleet_members(
         )
 
     members = await fleet_esi.get_fleet_members(fleet_id, token, refresh_tok, action.fc_character_id)
+
+    char_ids = [m.get("character_id") for m in members if m.get("character_id")]
+    name_map = await resolve_entity_names(char_ids)
+
+    registered_ids: set[int] = set()
+    if char_ids:
+        reg_result = await db.execute(
+            select(Character.character_id).where(Character.character_id.in_(char_ids))
+        )
+        registered_ids = {r[0] for r in reg_result.all()}
+
+    for m in members:
+        cid = m.get("character_id")
+        m["character_name"] = name_map.get(cid, {}).get("name") if cid else None
+        m["is_registered"] = cid in registered_ids if cid else False
+
     return members
 
 
@@ -326,6 +343,13 @@ async def issue_pap(
         fleet_id, token, refresh_tok, body.fc_character_id
     )
 
+    # 解析成员角色名
+    char_ids = [m.get("character_id") for m in members if m.get("character_id")]
+    name_map = await resolve_entity_names(char_ids)
+    for m in members:
+        cid = m.get("character_id")
+        m["character_name"] = name_map.get(cid, {}).get("name") if cid else None
+
     existing_result = await db.execute(
         select(PapRecord.character_id).where(PapRecord.action_id == action_id)
     )
@@ -334,13 +358,13 @@ async def issue_pap(
     new_records: list[PapRecord] = []
     for member in members:
         char_id = member.get("character_id")
-        char_name = member.get("character_name", "Unknown")
+        char_name = name_map.get(char_id, {}).get("name") if char_id else None
         if char_id and char_id not in already_issued:
             new_records.append(
                 PapRecord(
                     action_id=action_id,
                     character_id=char_id,
-                    character_name=char_name,
+                    character_name=char_name or f"ID:{char_id}",
                     issued_at=datetime.now(UTC),
                     issued_by_character_id=body.fc_character_id,
                 )

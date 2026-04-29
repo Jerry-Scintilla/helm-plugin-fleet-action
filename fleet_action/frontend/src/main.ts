@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { nextTick } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { initSDK, updateToken } from './api'
@@ -26,6 +27,9 @@ loadScript('/plugin-sdk/helm-sdk.js').then(() => {
       }
     })
 
-    createApp(App).use(router).mount('#app')
+    // Guard against double-mount (e.g. token refresh re-fires callback)
+    if (document.getElementById('app')?.childNodes.length === 0) {
+      nextTick(() => createApp(App).use(router).mount('#app'))
+    }
   })
 })

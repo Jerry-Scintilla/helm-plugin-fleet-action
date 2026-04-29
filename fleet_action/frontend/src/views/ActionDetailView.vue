@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, type ActionDetail, type FleetMember, type IssuePapResult } from '@/api'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const route = useRoute()
 const router = useRouter()
 const actionId = Number(route.params.id)
+
+const { confirm } = useConfirmDialog()
 
 const action = ref<ActionDetail | null>(null)
 const loading = ref(true)
@@ -16,6 +19,8 @@ const members = ref<FleetMember[]>([])
 const membersLoading = ref(false)
 const membersError = ref('')
 const membersLoaded = ref(false)
+
+const registeredCount = computed(() => members.value.filter(m => m.is_registered).length)
 
 const papResult = ref<IssuePapResult | null>(null)
 const papLoading = ref(false)
@@ -34,7 +39,7 @@ async function loadAction() {
 }
 
 async function endAction() {
-  if (!confirm('确定结束此行动？结束后无法继续发放 PAP。')) return
+  if (!(await confirm('确定结束此行动？结束后无法继续发放 PAP。'))) return
   try {
     await api.endAction(actionId)
     await loadAction()
@@ -44,7 +49,7 @@ async function endAction() {
 }
 
 async function deleteAction() {
-  if (!confirm('确定删除此行动？此操作不可撤销。')) return
+  if (!(await confirm('确定删除此行动？此操作不可撤销。'))) return
   try {
     await api.deleteAction(actionId)
     router.push('/actions')
@@ -186,18 +191,26 @@ onMounted(loadAction)
           <template v-else>
             <div class="text-muted" style="font-size:12px;margin-bottom:8px">
               当前舰队成员：{{ members.length }} 人
+              <span class="text-muted">（已注册 {{ registeredCount }} 人）</span>
             </div>
             <table class="data-table">
               <thead>
                 <tr>
                   <th>角色名</th>
                   <th>角色 ID</th>
+                  <th>注册状态</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="m in members" :key="m.character_id">
-                  <td>{{ m.character_name }}</td>
+                  <td :class="{ 'text-bright': m.character_name, 'text-muted': !m.character_name }">
+                    {{ m.character_name || '未知' }}
+                  </td>
                   <td class="text-muted">{{ m.character_id }}</td>
+                  <td>
+                    <span v-if="m.is_registered" class="badge badge-active">已注册</span>
+                    <span v-else class="badge badge-ended">未注册</span>
+                  </td>
                 </tr>
               </tbody>
             </table>

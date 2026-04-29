@@ -76,6 +76,7 @@ export interface ActionsPage {
 export interface FleetMember {
   character_id: number
   character_name: string
+  is_registered: boolean
   ship_type_id?: number
 }
 

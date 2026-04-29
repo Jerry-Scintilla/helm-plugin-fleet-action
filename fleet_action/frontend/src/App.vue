@@ -1,4 +1,21 @@
+<script setup lang="ts">
+import { RouterView } from 'vue-router'
+import ConfirmDialog from './components/ConfirmDialog.vue'
+import { useConfirmDialog } from './composables/useConfirmDialog'
+
+const { message, _resolve } = useConfirmDialog()
+
+function onConfirm() { _resolve.value?.(true) }
+function onCancel() { _resolve.value?.(false) }
+</script>
+
 <template>
+  <ConfirmDialog
+    :message="message"
+    :visible="!!message"
+    @confirm="onConfirm"
+    @cancel="onCancel"
+  />
   <RouterView />
 </template>
 
