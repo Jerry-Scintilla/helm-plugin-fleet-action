@@ -1,0 +1,28 @@
+# Python 构建产物
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 前端构建产物（由 vite 输出到 fleet_action/frontend/dist/，随 wheel 发布，不提交 git）
+fleet_action/frontend/dist/
+
+# 前端依赖
+frontend/node_modules/
+
+# 环境
+.env
+.env.local
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# docs
+Plugin_Dev_Guide.md
+.claude/
+esi-docs-main/
