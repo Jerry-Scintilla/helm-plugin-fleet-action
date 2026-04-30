@@ -22,6 +22,7 @@ where = ["."]
 fleet_action = [
     "frontend/dist/**",
     "migrations/versions/*.py",
-    "migrations/alembic.ini",
-    "migrations/env.py",
+    # 以下两行仅在保留本地开发辅助文件时才需要（安装器不再使用）
+    # "migrations/alembic.ini",
+    # "migrations/env.py",
 ]

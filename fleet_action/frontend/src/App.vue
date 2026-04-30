@@ -5,8 +5,14 @@ import { useConfirmDialog } from './composables/useConfirmDialog'
 
 const { message, _resolve } = useConfirmDialog()
 
-function onConfirm() { _resolve.value?.(true) }
-function onCancel() { _resolve.value?.(false) }
+function onConfirm() {
+  _resolve.value?.(true)
+  message.value = ''
+}
+function onCancel() {
+  _resolve.value?.(false)
+  message.value = ''
+}
 </script>
 
 <template>
