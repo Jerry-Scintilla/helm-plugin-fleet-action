@@ -1,11 +1,25 @@
 from pathlib import Path
 
-from app.plugins.base import HelmPlugin, PermissionDef, SidebarItem
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.plugins.base import (
+    CharacterExtension,
+    CharacterExtensionProvider,
+    HelmPlugin,
+    PermissionDef,
+    PluginContext,
+    SidebarItem,
+)
+from app.plugins.registry import extension_registry
+
+from fleet_action.models import PapRecord
 
 
-class FleetActionPlugin(HelmPlugin):
+class FleetActionPlugin(HelmPlugin, CharacterExtensionProvider):
     name = "fleet-action"
-    version = "0.1.0"
+    version = "0.1.1"
     author = "Jerry_Scintilla"
     description = "EVE Online 舰队行动管理，支持手动发放 PAP 出勤记录"
     helm_sdk_version = ">=1.0,<2.0"
@@ -42,3 +56,47 @@ class FleetActionPlugin(HelmPlugin):
 
     def get_frontend_dev_url(self):
         return None
+
+    def on_enable(self, ctx: PluginContext) -> None:
+        extension_registry.register("character.extension", self, self.name)
+
+    async def get_character_extension(
+        self, character_id: int, db: AsyncSession
+    ) -> CharacterExtension | None:
+        result = await db.execute(
+            select(PapRecord)
+            .where(PapRecord.character_id == character_id)
+            .options(selectinload(PapRecord.action))
+            .order_by(PapRecord.issued_at.desc())
+        )
+        records = result.scalars().all()
+
+        if not records:
+            return CharacterExtension(
+                character_id=character_id,
+                title="PAP 出勤记录",
+                widget="stats",
+                content=[
+                    {"label": "总出勤次数", "value": 0},
+                    {"label": "最近行动", "value": "暂无"},
+                    {"label": "最近出勤", "value": "暂无"},
+                ],
+                order=10,
+            )
+
+        total_count = len(records)
+        latest_record = records[0]
+        last_action_name = latest_record.action.name if latest_record.action else "未知行动"
+        last_issued_at = latest_record.issued_at.strftime("%Y-%m-%d %H:%M") if latest_record.issued_at else "暂无"
+
+        return CharacterExtension(
+            character_id=character_id,
+            title="PAP 出勤记录",
+            widget="stats",
+            content=[
+                {"label": "总出勤次数", "value": total_count},
+                {"label": "最近行动", "value": last_action_name},
+                {"label": "最近出勤", "value": last_issued_at},
+            ],
+            order=10,
+        )
