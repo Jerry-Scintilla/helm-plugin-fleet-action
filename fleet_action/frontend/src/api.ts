@@ -87,6 +87,22 @@ export interface IssuePapResult {
   motd_updated: boolean
 }
 
+export interface PapStatsItem {
+  action_id: number
+  action_name: string
+  action_date: string
+  fc_character_name: string
+  fleet_id: number | null
+}
+
+export interface CharacterPapStats {
+  character_id: number
+  total_count: number
+  this_month_count: number
+  this_year_count: number
+  records: PapStatsItem[]
+}
+
 // ── API calls ──────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -108,4 +124,7 @@ export const api = {
 
   issuePap: (id: number, body: { action_id: number; fc_character_id: number; update_motd: boolean }) =>
     request<IssuePapResult>('POST', `/actions/${id}/pap`, body),
+
+  getCharacterPapStats: (character_id: number) =>
+    request<CharacterPapStats>('GET', `/pap-stats/${character_id}`),
 }

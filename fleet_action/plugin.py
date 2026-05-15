@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.plugins.base import (
     CharacterExtension,
     CharacterExtensionProvider,
+    CharacterSubmodule,
+    CharacterSubmoduleProvider,
     HelmPlugin,
     PermissionDef,
     PluginContext,
@@ -17,7 +19,7 @@ from app.plugins.registry import extension_registry
 from fleet_action.models import PapRecord
 
 
-class FleetActionPlugin(HelmPlugin, CharacterExtensionProvider):
+class FleetActionPlugin(HelmPlugin, CharacterExtensionProvider, CharacterSubmoduleProvider):
     name = "fleet-action"
     version = "0.1.1"
     author = "Jerry_Scintilla"
@@ -100,3 +102,14 @@ class FleetActionPlugin(HelmPlugin, CharacterExtensionProvider):
             ],
             order=10,
         )
+
+    def get_character_submodules(self) -> list[CharacterSubmodule]:
+        return [
+            CharacterSubmodule(
+                slug="pap",
+                label="PAP 出勤",
+                iframe_url_template="/plugin-ui/fleet-action/pap?character_id={character_id}",
+                icon="📋",
+                order=50,
+            )
+        ]

@@ -53,3 +53,19 @@ class IssuePapResponse(BaseModel):
     issued_count: int
     member_ids: list[int]
     motd_updated: bool
+
+
+class PapStatsItem(BaseModel):
+    action_id: int
+    action_name: str
+    action_date: datetime
+    fc_character_name: str
+    fleet_id: int | None
+
+
+class CharacterPapStatsResponse(BaseModel):
+    character_id: int
+    total_count: int
+    this_month_count: int
+    this_year_count: int
+    records: list[PapStatsItem]

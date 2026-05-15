@@ -15,10 +15,12 @@ from app.services.esi_names import resolve_entity_names
 from fleet_action.schemas import (
     ActionDetailResponse,
     ActionResponse,
+    CharacterPapStatsResponse,
     CreateActionRequest,
     IssuePapRequest,
     IssuePapResponse,
     PapRecordResponse,
+    PapStatsItem,
 )
 
 router = APIRouter()
@@ -395,4 +397,52 @@ async def issue_pap(
         issued_count=len(new_records),
         member_ids=[r.character_id for r in new_records],
         motd_updated=motd_updated,
+    )
+
+
+# ── GET /pap-stats/{character_id} ───────────────────────────────────────────────
+
+@router.get("/pap-stats/{character_id}", summary="获取角色 PAP 统计")
+async def get_character_pap_stats(
+    character_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """返回角色的完整 PAP 统计信息，包含出勤次数和明细记录。"""
+    from fleet_action.models import FleetAction
+
+    now = datetime.now(UTC)
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    current_year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    result = await db.execute(
+        select(PapRecord)
+        .where(PapRecord.character_id == character_id)
+        .options(selectinload(PapRecord.action))
+        .order_by(PapRecord.issued_at.desc())
+    )
+    records = result.scalars().all()
+
+    total_count = len(records)
+    this_month_count = sum(1 for r in records if r.issued_at and r.issued_at >= current_month_start)
+    this_year_count = sum(1 for r in records if r.issued_at and r.issued_at >= current_year_start)
+
+    pap_records = []
+    for r in records:
+        action = r.action
+        pap_records.append(
+            PapStatsItem(
+                action_id=r.action_id,
+                action_name=action.name if action else "未知行动",
+                action_date=action.created_at if action else r.issued_at,
+                fc_character_name=action.fc_character_name if action else "未知",
+                fleet_id=action.fleet_id if action else None,
+            )
+        )
+
+    return CharacterPapStatsResponse(
+        character_id=character_id,
+        total_count=total_count,
+        this_month_count=this_month_count,
+        this_year_count=this_year_count,
+        records=pap_records,
     )
