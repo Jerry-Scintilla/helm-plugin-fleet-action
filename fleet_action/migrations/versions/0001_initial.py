@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import ENUM as PgEnum
 
 revision = "0001fleet_action"
 down_revision = None
-branch_labels = ("fleet-action",)
+branch_labels = None
 depends_on = None
 
 

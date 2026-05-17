@@ -248,7 +248,7 @@ onMounted(loadAction)
 
 <style scoped>
 .info-label {
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.8rem;
   padding: 7px 16px 7px 0;
   white-space: nowrap;

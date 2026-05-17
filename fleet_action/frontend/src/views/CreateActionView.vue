@@ -52,7 +52,7 @@ async function submit() {
       <div v-if="error" class="error-msg">{{ error }}</div>
 
       <div class="form-group">
-        <label class="form-label">行动名称 <span style="color:#e07070">*</span></label>
+        <label class="form-label">行动名称 <span style="color:var(--error-text)">*</span></label>
         <input class="form-control" v-model="form.name" placeholder="如：Brave Newbies Roam" maxlength="256" />
       </div>
 
@@ -62,7 +62,7 @@ async function submit() {
       </div>
 
       <div class="form-group">
-        <label class="form-label">FC 角色 <span style="color:#e07070">*</span></label>
+        <label class="form-label">FC 角色 <span style="color:var(--error-text)">*</span></label>
         <select class="form-control" v-model="form.fc_character_id">
           <option v-if="characters.length === 0" :value="0" disabled>（加载中…）</option>
           <option v-for="c in characters" :key="c.value" :value="c.value">{{ c.label }}</option>

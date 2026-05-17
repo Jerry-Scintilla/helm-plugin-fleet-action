@@ -108,22 +108,23 @@ onMounted(load)
 }
 
 .stat-card {
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 24px;
   text-align: center;
 }
 
 .stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--color-primary);
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--brand);
 }
 
 .stat-label {
-  font-size: 13px;
-  color: var(--color-text-secondary);
+  font-size: 0.88rem;
+  color: var(--text-muted);
   margin-top: 6px;
 }
 </style>

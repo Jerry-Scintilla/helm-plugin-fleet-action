@@ -44,7 +44,7 @@ const emit = defineEmits<{
   text-align: center;
 }
 .confirm-dialog p {
-  color: var(--text-bright);
+  color: var(--text-primary);
   font-size: 14px;
   margin-bottom: 20px;
   line-height: 1.5;

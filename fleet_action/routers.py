@@ -384,6 +384,15 @@ async def issue_pap(
             fc_name=action.fc_character_name,
             total_pap_count=total_pap,
         )
+        # 收集其他插件（如 SRP）注册的 MOTD 片段
+        from app.plugins.registry import extension_registry
+        for provider in extension_registry.get_all("srp.motd_fragment"):
+            try:
+                fragment = provider.get_motd_fragment(action.id)
+                if fragment:
+                    motd = motd + "\n" + fragment
+            except Exception:
+                pass
         try:
             await fleet_esi.put_fleet_motd(fleet_id, token, motd)
             motd_updated = True
