@@ -83,6 +83,8 @@ export interface FleetMember {
 export interface IssuePapResult {
   action_id: number
   issued_count: number
+  new_member_count: number
+  overwritten_count: number
   member_ids: number[]
   motd_updated: boolean
 }
@@ -122,7 +124,7 @@ export const api = {
 
   getMembers: (id: number) => request<FleetMember[]>('GET', `/actions/${id}/members`),
 
-  issuePap: (id: number, body: { action_id: number; fc_character_id: number; update_motd: boolean }) =>
+  issuePap: (id: number, body: { action_id: number; fc_character_id: number; update_motd: boolean; pap_count: number }) =>
     request<IssuePapResult>('POST', `/actions/${id}/pap`, body),
 
   getCharacterPapStats: (character_id: number) =>

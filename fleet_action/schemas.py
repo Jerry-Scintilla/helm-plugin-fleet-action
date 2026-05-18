@@ -15,6 +15,7 @@ class IssuePapRequest(BaseModel):
     action_id: int
     fc_character_id: int = Field(..., description="FC 角色 ID，用于获取舰队成员及 ESI token")
     update_motd: bool = Field(default=True, description="发放 PAP 后是否更新舰队 MOTD")
+    pap_count: int = Field(default=1, ge=1, le=10, description="每人发放 PAP 数量（1-10）")
 
 
 # ── Response schemas ──────────────────────────────────────────────────────────
@@ -50,7 +51,9 @@ class ActionDetailResponse(ActionResponse):
 
 class IssuePapResponse(BaseModel):
     action_id: int
-    issued_count: int
+    issued_count: int       # 本次新建的记录总条数（新成员 + 覆盖成员）
+    new_member_count: int   # 首次获得 PAP 的成员数
+    overwritten_count: int  # PAP 数量被调整的成员数
     member_ids: list[int]
     motd_updated: bool
 

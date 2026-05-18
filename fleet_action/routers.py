@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -352,32 +352,56 @@ async def issue_pap(
         cid = m.get("character_id")
         m["character_name"] = name_map.get(cid, {}).get("name") if cid else None
 
+    # 查询当前行动中每个角色已有的 PAP 数量
     existing_result = await db.execute(
-        select(PapRecord.character_id).where(PapRecord.action_id == action_id)
+        select(PapRecord.character_id, func.count().label("cnt"))
+        .where(PapRecord.action_id == action_id)
+        .group_by(PapRecord.character_id)
     )
-    already_issued = {row[0] for row in existing_result.all()}
+    existing_counts: dict[int, int] = {row[0]: row[1] for row in existing_result.all()}
 
+    issued_at = datetime.now(UTC)
     new_records: list[PapRecord] = []
+    chars_to_overwrite: list[int] = []  # 已有 PAP 但数量与新设置不同
+
     for member in members:
         char_id = member.get("character_id")
-        char_name = name_map.get(char_id, {}).get("name") if char_id else None
-        if char_id and char_id not in already_issued:
+        if not char_id:
+            continue
+        current_count = existing_counts.get(char_id, 0)
+        if current_count == body.pap_count:
+            continue  # 数量一致，跳过（幂等）
+        if current_count > 0:
+            chars_to_overwrite.append(char_id)  # 数量不同，先删后建
+        char_name = name_map.get(char_id, {}).get("name")
+        for _ in range(body.pap_count):
             new_records.append(
                 PapRecord(
                     action_id=action_id,
                     character_id=char_id,
                     character_name=char_name or f"ID:{char_id}",
-                    issued_at=datetime.now(UTC),
+                    issued_at=issued_at,
                     issued_by_character_id=body.fc_character_id,
                 )
             )
+
+    if chars_to_overwrite:
+        await db.execute(
+            delete(PapRecord).where(
+                PapRecord.action_id == action_id,
+                PapRecord.character_id.in_(chars_to_overwrite),
+            )
+        )
     if new_records:
         db.add_all(new_records)
         await db.flush()
 
     motd_updated = False
     if body.update_motd:
-        total_pap = len(already_issued) + len(new_records)
+        total_pap_result = await db.execute(
+            select(func.count()).select_from(PapRecord).where(PapRecord.action_id == action_id)
+        )
+        total_pap = total_pap_result.scalar() or 0
         motd = _MOTD_TEMPLATE.format(
             action_name=action.name,
             action_id=action.id,
@@ -400,11 +424,14 @@ async def issue_pap(
             # MOTD 更新失败不影响 PAP 记录入库
             pass
 
+    new_member_count = len(new_records) // body.pap_count - len(chars_to_overwrite) if new_records else 0
     await db.commit()
     return IssuePapResponse(
         action_id=action_id,
         issued_count=len(new_records),
-        member_ids=[r.character_id for r in new_records],
+        new_member_count=new_member_count,
+        overwritten_count=len(chars_to_overwrite),
+        member_ids=list({r.character_id for r in new_records}),
         motd_updated=motd_updated,
     )
 

@@ -25,6 +25,8 @@ const registeredCount = computed(() => members.value.filter(m => m.is_registered
 const papResult = ref<IssuePapResult | null>(null)
 const papLoading = ref(false)
 const papError = ref('')
+const papCount = ref(1)
+const lastPapCount = ref(1)
 
 async function loadAction() {
   loading.value = true
@@ -80,11 +82,13 @@ async function issuePap() {
   papLoading.value = true
   papError.value = ''
   papResult.value = null
+  lastPapCount.value = papCount.value
   try {
     papResult.value = await api.issuePap(actionId, {
       action_id: actionId,
       fc_character_id: action.value.fc_character_id,
       update_motd: true,
+      pap_count: papCount.value,
     })
     // Refresh PAP records
     await loadAction()
@@ -168,10 +172,21 @@ onMounted(loadAction)
       <div class="card" v-if="action.status === 'active'">
         <div class="card-title">发放 PAP 出勤记录</div>
 
-        <div class="btn-row" style="margin-bottom:14px">
+        <div class="btn-row" style="margin-bottom:14px;align-items:center">
           <button class="btn" :disabled="membersLoading" @click="fetchMembers">
             {{ membersLoading ? '查询中…' : '查询当前舰队成员' }}
           </button>
+          <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:0.85rem">
+            每人发放
+            <input
+              v-model.number="papCount"
+              type="number"
+              min="1"
+              max="10"
+              style="width:52px;padding:4px 6px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text-bright);text-align:center"
+            />
+            个 PAP
+          </label>
           <button class="btn btn-primary" :disabled="!membersLoaded || papLoading" @click="issuePap">
             {{ papLoading ? '发放中…' : '向当前成员发放 PAP' }}
           </button>
@@ -181,9 +196,15 @@ onMounted(loadAction)
         <div v-if="papError" class="error-msg">{{ papError }}</div>
 
         <div v-if="papResult" class="success-msg">
-          已发放 {{ papResult.issued_count }} 人 PAP。
-          <span v-if="papResult.motd_updated">MOTD 已更新。</span>
-          <span v-else-if="papResult.issued_count > 0">MOTD 更新失败（不影响记录）。</span>
+          <template v-if="papResult.issued_count === 0">
+            所有当前成员已有 {{ lastPapCount }} 个 PAP，无需变更。
+          </template>
+          <template v-else>
+            <span v-if="papResult.new_member_count > 0">新增 {{ papResult.new_member_count }} 人（每人 {{ lastPapCount }} 个 PAP）。</span>
+            <span v-if="papResult.overwritten_count > 0">调整 {{ papResult.overwritten_count }} 人 PAP 数为 {{ lastPapCount }}。</span>
+            <span v-if="papResult.motd_updated">MOTD 已更新。</span>
+            <span v-else>MOTD 更新失败（不影响记录）。</span>
+          </template>
         </div>
 
         <template v-if="membersLoaded">
