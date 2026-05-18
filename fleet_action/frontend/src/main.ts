@@ -3,6 +3,7 @@ import { nextTick } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { initSDK, updateToken } from './api'
+import { setLocale } from './i18n'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const HelmSDK: any
@@ -18,7 +19,8 @@ function loadScript(src: string): Promise<void> {
 }
 
 loadScript('/plugin-sdk/helm-sdk.js').then(() => {
-  HelmSDK.init((ctx: { token: string; apiBase: string }) => {
+  HelmSDK.init((ctx: { token: string; apiBase: string; locale?: string }) => {
+    setLocale(ctx.locale ?? 'zh')
     initSDK(ctx.token, ctx.apiBase)
 
     window.addEventListener('message', (e: MessageEvent) => {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
+
 const props = defineProps<{
   message: string
   visible: boolean
@@ -16,8 +18,8 @@ const emit = defineEmits<{
     <div class="confirm-dialog">
       <p>{{ props.message }}</p>
       <div class="confirm-actions">
-        <button class="btn btn-primary" @click="emit('confirm')">确定</button>
-        <button class="btn" @click="emit('cancel')">取消</button>
+        <button class="btn btn-primary" @click="emit('confirm')">{{ t('confirm') }}</button>
+        <button class="btn" @click="emit('cancel')">{{ t('cancel') }}</button>
       </div>
     </div>
   </div>

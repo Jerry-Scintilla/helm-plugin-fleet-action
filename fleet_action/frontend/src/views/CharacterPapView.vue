@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { api, type PapStatsItem } from '@/api'
+import { t, dateLocale } from '@/i18n'
 
 const props = defineProps<{
   characterId?: number
@@ -25,7 +26,7 @@ const effectiveCharacterId = computed(() => {
 
 async function load() {
   if (!effectiveCharacterId.value) {
-    error.value = '缺少 character_id 参数'
+    error.value = t('papstats.err.noId')
     return
   }
   loading.value = true
@@ -41,7 +42,7 @@ async function load() {
 
 function formatDate(dt: string | Date | null) {
   if (!dt) return '—'
-  return new Date(dt).toLocaleString('zh-CN', { hour12: false })
+  return new Date(dt).toLocaleString(dateLocale(), { hour12: false })
 }
 
 onMounted(load)
@@ -50,7 +51,7 @@ onMounted(load)
 <template>
   <div class="page">
     <div class="page-header">
-      <span class="page-title">PAP 出勤记录</span>
+      <span class="page-title">{{ t('papstats.title') }}</span>
     </div>
 
     <div v-if="error" class="error-msg">{{ error }}</div>
@@ -59,15 +60,15 @@ onMounted(load)
     <div class="stats-grid" v-if="stats">
       <div class="stat-card">
         <div class="stat-value">{{ stats.total_count }}</div>
-        <div class="stat-label">总出勤次数</div>
+        <div class="stat-label">{{ t('papstats.total') }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ stats.this_month_count }}</div>
-        <div class="stat-label">本月出勤</div>
+        <div class="stat-label">{{ t('papstats.month') }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ stats.this_year_count }}</div>
-        <div class="stat-label">本年出勤</div>
+        <div class="stat-label">{{ t('papstats.year') }}</div>
       </div>
     </div>
 
@@ -76,17 +77,17 @@ onMounted(load)
       <table class="data-table">
         <thead>
           <tr>
-            <th>行动名称</th>
-            <th>指挥官</th>
-            <th>出勤日期</th>
+            <th>{{ t('papstats.col.action') }}</th>
+            <th>{{ t('papstats.col.fc') }}</th>
+            <th>{{ t('papstats.col.date') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="3" class="empty-msg">加载中…</td>
+            <td colspan="3" class="empty-msg">{{ t('loading') }}</td>
           </tr>
           <tr v-else-if="stats.records.length === 0">
-            <td colspan="3" class="empty-msg">暂无出勤记录</td>
+            <td colspan="3" class="empty-msg">{{ t('papstats.empty') }}</td>
           </tr>
           <tr v-for="record in stats.records" :key="record.action_id + '-' + record.action_date">
             <td class="text-bright">{{ record.action_name }}</td>

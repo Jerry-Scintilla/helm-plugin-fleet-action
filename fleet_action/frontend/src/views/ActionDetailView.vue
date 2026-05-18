@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, type ActionDetail, type FleetMember, type IssuePapResult } from '@/api'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { t, dateLocale } from '@/i18n'
 
 const route = useRoute()
 const router = useRouter()
@@ -41,7 +42,7 @@ async function loadAction() {
 }
 
 async function endAction() {
-  if (!(await confirm('确定结束此行动？结束后无法继续发放 PAP。'))) return
+  if (!(await confirm(t('detail.confirm.end')))) return
   try {
     await api.endAction(actionId)
     await loadAction()
@@ -51,7 +52,7 @@ async function endAction() {
 }
 
 async function deleteAction() {
-  if (!(await confirm('确定删除此行动？此操作不可撤销。'))) return
+  if (!(await confirm(t('detail.confirm.delete')))) return
   try {
     await api.deleteAction(actionId)
     router.push('/actions')
@@ -76,7 +77,7 @@ async function fetchMembers() {
 async function issuePap() {
   if (!action.value) return
   if (!membersLoaded.value) {
-    papError.value = '请先查询当前舰队成员'
+    papError.value = t('pap.err.noFetch')
     return
   }
   papLoading.value = true
@@ -101,7 +102,7 @@ async function issuePap() {
 
 function formatDate(dt: string | null) {
   if (!dt) return '—'
-  return new Date(dt).toLocaleString('zh-CN', { hour12: false })
+  return new Date(dt).toLocaleString(dateLocale(), { hour12: false })
 }
 
 onMounted(loadAction)
@@ -112,72 +113,72 @@ onMounted(loadAction)
     <!-- Header -->
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:12px">
-        <button class="btn" @click="router.push('/actions')" style="padding:4px 10px">← 返回</button>
-        <span class="page-title">行动详情</span>
+        <button class="btn" @click="router.push('/actions')" style="padding:4px 10px">{{ t('back') }}</button>
+        <span class="page-title">{{ t('detail.title') }}</span>
       </div>
     </div>
 
-    <div v-if="loading" class="text-muted">加载中…</div>
+    <div v-if="loading" class="text-muted">{{ t('loading') }}</div>
     <div v-else-if="error" class="error-msg">{{ error }}</div>
 
     <template v-if="action">
 
-      <!-- ── 区块 A：基本信息 ──────────────────────────────────── -->
+      <!-- ── Section A: Basic Info ───────────────────────────────── -->
       <div class="card">
-        <div class="card-title">基本信息</div>
+        <div class="card-title">{{ t('detail.info') }}</div>
         <table style="width:100%;border-collapse:collapse">
           <tbody>
             <tr>
-              <td class="info-label">行动名称</td>
+              <td class="info-label">{{ t('detail.field.name') }}</td>
               <td class="text-bright">{{ action.name }}</td>
-              <td class="info-label">状态</td>
+              <td class="info-label">{{ t('detail.field.status') }}</td>
               <td>
                 <span class="badge" :class="action.status === 'active' ? 'badge-active' : 'badge-ended'">
-                  {{ action.status === 'active' ? '进行中' : '已结束' }}
+                  {{ action.status === 'active' ? t('active') : t('ended') }}
                 </span>
               </td>
             </tr>
             <tr>
-              <td class="info-label">舰队指挥官</td>
+              <td class="info-label">{{ t('detail.field.fc') }}</td>
               <td>{{ action.fc_character_name }}</td>
-              <td class="info-label">创建时间</td>
+              <td class="info-label">{{ t('detail.field.created') }}</td>
               <td class="text-muted">{{ formatDate(action.created_at) }}</td>
             </tr>
             <tr v-if="action.description">
-              <td class="info-label">行动描述</td>
+              <td class="info-label">{{ t('detail.field.desc') }}</td>
               <td colspan="3">{{ action.description }}</td>
             </tr>
             <tr v-if="action.ended_at">
-              <td class="info-label">结束时间</td>
+              <td class="info-label">{{ t('detail.field.ended') }}</td>
               <td colspan="3" class="text-muted">{{ formatDate(action.ended_at) }}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- ── 区块 B：操作按钮 ──────────────────────────────────── -->
+      <!-- ── Section B: Action Buttons ─────────────────────────── -->
       <div class="card">
-        <div class="card-title">行动操作</div>
+        <div class="card-title">{{ t('detail.actions') }}</div>
         <div class="btn-row">
           <button v-if="action.status === 'active'" class="btn btn-primary" @click="endAction">
-            ⏹ 结束行动
+            {{ t('detail.btn.end') }}
           </button>
           <button class="btn btn-danger" @click="deleteAction">
-            🗑 删除行动
+            {{ t('detail.btn.delete') }}
           </button>
         </div>
       </div>
 
-      <!-- ── 区块 C：舰队成员预览 + 发放 PAP（仅 active）──────── -->
+      <!-- ── Section C: Fleet Members + Issue PAP (active only) ── -->
       <div class="card" v-if="action.status === 'active'">
-        <div class="card-title">发放 PAP 出勤记录</div>
+        <div class="card-title">{{ t('pap.section') }}</div>
 
         <div class="btn-row" style="margin-bottom:14px;align-items:center">
           <button class="btn" :disabled="membersLoading" @click="fetchMembers">
-            {{ membersLoading ? '查询中…' : '查询当前舰队成员' }}
+            {{ membersLoading ? t('pap.fetching') : t('pap.fetch') }}
           </button>
           <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:0.85rem">
-            每人发放
+            {{ t('pap.perPerson') }}
             <input
               v-model.number="papCount"
               type="number"
@@ -185,10 +186,10 @@ onMounted(loadAction)
               max="10"
               style="width:52px;padding:4px 6px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text-bright);text-align:center"
             />
-            个 PAP
+            {{ t('pap.unit') }}
           </label>
           <button class="btn btn-primary" :disabled="!membersLoaded || papLoading" @click="issuePap">
-            {{ papLoading ? '发放中…' : '向当前成员发放 PAP' }}
+            {{ papLoading ? t('pap.issuing') : t('pap.issue') }}
           </button>
         </div>
 
@@ -197,40 +198,40 @@ onMounted(loadAction)
 
         <div v-if="papResult" class="success-msg">
           <template v-if="papResult.issued_count === 0">
-            所有当前成员已有 {{ lastPapCount }} 个 PAP，无需变更。
+            {{ t('pap.result.noChange', { n: lastPapCount }) }}
           </template>
           <template v-else>
-            <span v-if="papResult.new_member_count > 0">新增 {{ papResult.new_member_count }} 人（每人 {{ lastPapCount }} 个 PAP）。</span>
-            <span v-if="papResult.overwritten_count > 0">调整 {{ papResult.overwritten_count }} 人 PAP 数为 {{ lastPapCount }}。</span>
-            <span v-if="papResult.motd_updated">MOTD 已更新。</span>
-            <span v-else>MOTD 更新失败（不影响记录）。</span>
+            <span v-if="papResult.new_member_count > 0">{{ t('pap.result.newMembers', { count: papResult.new_member_count, n: lastPapCount }) }}</span>
+            <span v-if="papResult.overwritten_count > 0">{{ t('pap.result.overwritten', { count: papResult.overwritten_count, n: lastPapCount }) }}</span>
+            <span v-if="papResult.motd_updated">{{ t('pap.result.motdOk') }}</span>
+            <span v-else>{{ t('pap.result.motdFail') }}</span>
           </template>
         </div>
 
         <template v-if="membersLoaded">
-          <div v-if="members.length === 0" class="empty-msg">当前舰队无成员</div>
+          <div v-if="members.length === 0" class="empty-msg">{{ t('pap.noMembers') }}</div>
           <template v-else>
             <div class="text-muted" style="font-size:12px;margin-bottom:8px">
-              当前舰队成员：{{ members.length }} 人
-              <span class="text-muted">（已注册 {{ registeredCount }} 人）</span>
+              {{ t('pap.memberCount', { total: members.length }) }}
+              <span class="text-muted">{{ t('pap.registeredCount', { count: registeredCount }) }}</span>
             </div>
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>角色名</th>
-                  <th>角色 ID</th>
-                  <th>注册状态</th>
+                  <th>{{ t('pap.col.name') }}</th>
+                  <th>{{ t('pap.col.id') }}</th>
+                  <th>{{ t('pap.col.reg') }}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="m in members" :key="m.character_id">
                   <td :class="{ 'text-bright': m.character_name, 'text-muted': !m.character_name }">
-                    {{ m.character_name || '未知' }}
+                    {{ m.character_name || t('unknown') }}
                   </td>
                   <td class="text-muted">{{ m.character_id }}</td>
                   <td>
-                    <span v-if="m.is_registered" class="badge badge-active">已注册</span>
-                    <span v-else class="badge badge-ended">未注册</span>
+                    <span v-if="m.is_registered" class="badge badge-active">{{ t('registered') }}</span>
+                    <span v-else class="badge badge-ended">{{ t('unregistered') }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -239,17 +240,17 @@ onMounted(loadAction)
         </template>
       </div>
 
-      <!-- ── 区块 D：PAP 记录 ──────────────────────────────────── -->
+      <!-- ── Section D: PAP Records ─────────────────────────────── -->
       <div class="card">
-        <div class="card-title">PAP 出勤记录（{{ action.pap_count }} 人）</div>
-        <div v-if="action.pap_records.length === 0" class="empty-msg">暂无 PAP 记录</div>
+        <div class="card-title">{{ t('records.title', { count: action.pap_count }) }}</div>
+        <div v-if="action.pap_records.length === 0" class="empty-msg">{{ t('records.empty') }}</div>
         <table v-else class="data-table">
           <thead>
             <tr>
-              <th>角色名</th>
-              <th>角色 ID</th>
-              <th>发放时间</th>
-              <th>发放人 ID</th>
+              <th>{{ t('records.col.name') }}</th>
+              <th>{{ t('records.col.id') }}</th>
+              <th>{{ t('records.col.time') }}</th>
+              <th>{{ t('records.col.by') }}</th>
             </tr>
           </thead>
           <tbody>
